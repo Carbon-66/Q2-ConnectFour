@@ -4,7 +4,7 @@ datagrams on /tmp/q2-connect4.input.sock, TERM to end it) through one scenario, 
 logged and its last state. Frames are saved as OUT_DIR/<scenario>-<name>.raw (view.py shows them).
 
 Usage: drive.py BUILD_DIR OUT_DIR SCENARIO
-Scenarios: menus, friend, ai, pause"""
+Scenarios: menus, friend, ai, pause, quit"""
 import os, shutil, signal, socket, subprocess, sys, tempfile, time
 
 build, outdir, scenario = sys.argv[1:4]
@@ -79,7 +79,7 @@ def settle(secs=3.0):  # until nothing falls and it's a person's move (or the ga
         time.sleep(0.05)
     return state()
 
-COL_X = [49 + 5 + 19 + 38 * c for c in range(7)]  # the columns' centres in the view
+COL_X = [53 + 5 + 18 + 37 * c for c in range(7)]  # the columns' centres in the view
 CENTRE, RETURN = 218, 170
 results = {}
 if scenario == 'menus':
@@ -158,6 +158,14 @@ elif scenario == 'pause':
     key(RETURN); time.sleep(0.2)
     wheel(-75); key(CENTRE); time.sleep(0.3)  # Main Menu
     results['menu'] = state()['state']
+elif scenario == 'quit':
+    wheel(-100)  # down to Quit, the last
+    snap('title-quit')
+    send(f'k d {CENTRE}')  # it's gone before the release
+    try:
+        results['exited_alone'] = int(proc.wait(3) == 0)
+    except subprocess.TimeoutExpired:
+        results['exited_alone'] = 0
 
 end = state()
 proc.send_signal(signal.SIGTERM)

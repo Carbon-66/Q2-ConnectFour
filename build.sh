@@ -24,7 +24,10 @@ rm -rf build/obj
 mkdir -p build/obj
 python3 sysroot/stubs/gen.py build/stubs
 python3 tools/font.py build/font_data.c
-clang $COMMON -nostdlibinc -isystem sysroot/include -Isrc -w -c build/font_data.c -o build/obj/font_data.o
+python3 tools/logo.py build/logo_data.c
+for gen in font_data logo_data; do
+    clang $COMMON -nostdlibinc -isystem sysroot/include -Isrc -w -c build/$gen.c -o build/obj/$gen.o
+done
 for src in src/*.c; do
     clang $COMMON -nostdlibinc -isystem sysroot/include $STRICT -c "$src" -o build/obj/$(basename "$src" .c).o
 done

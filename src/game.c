@@ -13,14 +13,14 @@
 /* ---------------------------------------------------------------------------------------------
  * Layout: the board sits low and in the middle, clear of the glass's rounded corners */
 
-#define CELL 38
+#define CELL 37
 #define PAD 5
 #define BW (COLS * CELL + 2 * PAD)
 #define BH (ROWS * CELL + 2 * PAD)
 #define BX ((VIEW_W - BW) / 2)
-#define BY (VIEW_H - BH - 8)
-#define HOLE_R 15.5f
-#define PIECE_R 16.5f
+#define BY (VIEW_H - BH - 10) /* clear of the border */
+#define HOLE_R 15.0f
+#define PIECE_R 16.0f
 #define HOVER_Y (BY - 23)
 #define STEP 25 /* wheel travel a column: 8 a turn */
 
@@ -28,12 +28,12 @@ static int col_x(int c) { return BX + PAD + CELL / 2 + CELL * c; }
 static int row_y(int r) { return BY + PAD + CELL / 2 + CELL * (ROWS - 1 - r); }
 
 /* colours */
-#define C_BG_TOP 0x1d2c52
-#define C_BG_BOT 0x0b1126
+#define C_BG 0x13204a /* flat navy */
 #define C_BOARD 0x2160dd
 #define C_BOARD_LO 0x1546b0
 #define C_TEXT 0xf2f4fa
 #define C_DIM 0x8f9bbd
+#define C_ITEM 0xc3cbe4
 #define C_ACCENT 0x5b8cff
 static const uint32_t piece_base[3] = { 0, 0xe63b36, 0xf6c22c };
 static const uint32_t piece_light[3] = { 0, 0xff8a78, 0xfff0a0 };
@@ -64,14 +64,14 @@ static struct {
     int wheel;               /* travel not yet turned into steps */
     int touching, touch_col;
     uint64_t over_t0;
-    int dirty;
+    int dirty, quit;
 } g;
 
-static struct { int level, mode, rec[LEVELS][3]; } save = { MEDIUM, VS_AI, { { 0 } } }; /* won, lost, drawn vs the computer */
+static struct { int level, mode; } save = { MEDIUM, VS_AI };
 
-static Img board_img, piece_img[3];
-static uint32_t bg[VIEW_W * VIEW_H];
+static Img board_img, piece_img[3], marker_img[3], border_img; /* marker: the small disc beside menu items */
 
+static int cov(float d);
 static int human(int who) { return g.mode == FRIEND || who == P1; }
 
 /* ---------------------------------------------------------------------------------------------
@@ -81,12 +81,10 @@ static void save_load(void) {
     FILE *f = fopen("connect4.sav", "r");
     if (!f) return;
     char line[128];
-    int a, b, c, d;
+    int a;
     while (fgets(line, sizeof line, f)) {
         if (sscanf(line, "level %d", &a) == 1 && a >= 0 && a < LEVELS) save.level = a;
         if (sscanf(line, "mode %d", &a) == 1 && (a == VS_AI || a == FRIEND)) save.mode = a;
-        if (sscanf(line, "record %d %d %d %d", &a, &b, &c, &d) == 4 && a >= 0 && a < LEVELS)
-            save.rec[a][0] = b, save.rec[a][1] = c, save.rec[a][2] = d;
     }
     fclose(f);
 }
@@ -95,7 +93,6 @@ static void save_write(void) {
     FILE *f = fopen("connect4.tmp", "w");
     if (!f) return;
     fprintf(f, "level %d\nmode %d\n", save.level, save.mode);
-    for (int l = 0; l < LEVELS; ++l) fprintf(f, "record %d %d %d %d\n", l, save.rec[l][0], save.rec[l][1], save.rec[l][2]);
     fclose(f);
     rename("connect4.tmp", "connect4.sav");
 }
@@ -105,14 +102,49 @@ static void save_write(void) {
 
 static int cov(float d) { return d >= 0.5f ? 256 : d <= -0.5f ? 0 : (int)((d + 0.5f) * 256); }
 
-static void make_pictures(void) {
+/* a disc of `who`'s colour, radius R, lit from the top left, with the raised ring of a real one */
+static Img disc_img(int who, float R) {
+    int S = (int)(R * 2 + 2);
+    Img im = img_new(S, S);
+    float c0 = S / 2.0f, k = R / PIECE_R;
+    for (int y = 0; y < S; ++y)
+        for (int x = 0; x < S; ++x) {
+            float dx = x + 0.5f - c0, dy = y + 0.5f - c0, d = __builtin_sqrtf(dx * dx + dy * dy);
+            int a = cov(R - d);
+            if (!a) continue;
+            float lx = dx + 5 * k, ly = dy + 6 * k, l = __builtin_sqrtf(lx * lx + ly * ly) / (R * 1.5f);
+            uint32_t c = mix(piece_light[who], piece_base[who], clampi((int)(l * 256), 0, 256));
+            float rim = 3 * k;
+            if (d > R - rim) c = mix(c, piece_dark[who], (int)((d - (R - rim)) / rim * 200));
+            float rr = d - 11 * k, w = 1.2f * (k < 0.8f ? 0.8f : k);
+            if (rr > -w && rr < 0) c = mix(c, piece_dark[who], 90);
+            else if (rr >= 0 && rr < w) c = mix(c, piece_light[who], 70);
+            im.px[y * S + x] = (uint32_t)(a > 255 ? 255 : a) << 24 | c;
+        }
+    return im;
+}
+
+/* a thin frame round the glass, in the logo's style: black, a white line, black */
+static Img border_pic(void) {
+    Img im = img_new(VIEW_W, VIEW_H);
     for (int y = 0; y < VIEW_H; ++y)
         for (int x = 0; x < VIEW_W; ++x) {
-            float dx = (x - VIEW_W / 2) / (float)VIEW_W, dy = (y - 40) / (float)VIEW_H;
-            int t = clampi((int)((dx * dx * 0.8f + dy * dy) * 300), 0, 256);
-            bg[y * VIEW_W + x] = mix(C_BG_TOP, C_BG_BOT, t);
+            float px = x + 0.5f, py = y + 0.5f;
+            float cx = px < CORNER ? CORNER : px > VIEW_W - CORNER ? VIEW_W - CORNER : px;
+            float cy = py < CORNER ? CORNER : py > VIEW_H - CORNER ? VIEW_H - CORNER : py;
+            float dx = px - cx, dy = py - cy;
+            float d = (dx || dy) ? CORNER - __builtin_sqrtf(dx * dx + dy * dy) /* inside the glass, px */
+                                 : (px < py ? px : py) < (VIEW_W - px < VIEW_H - py ? VIEW_W - px : VIEW_H - py)
+                                       ? (px < py ? px : py) : (VIEW_W - px < VIEW_H - py ? VIEW_W - px : VIEW_H - py);
+            int frame = cov(7 - d);              /* all of the frame */
+            int white = cov(d - 2.5f) * cov(5 - d) >> 8; /* its white line */
+            if (frame) im.px[y * VIEW_W + x] = (uint32_t)(frame > 255 ? 255 : frame) << 24 | mix(0, 0xffffff, white);
         }
+    return im;
+}
 
+static void make_pictures(void) {
+    border_img = border_pic();
     board_img = img_new(BW, BH);
     for (int y = 0; y < BH; ++y)
         for (int x = 0; x < BW; ++x) {
@@ -138,27 +170,7 @@ static void make_pictures(void) {
             board_img.px[y * BW + x] = (uint32_t)(a > 255 ? 255 : a) << 24 | c;
         }
 
-    for (int who = P1; who <= P2; ++who) {
-        int S = (int)(PIECE_R * 2 + 2);
-        Img im = img_new(S, S);
-        float c0 = S / 2.0f;
-        for (int y = 0; y < S; ++y)
-            for (int x = 0; x < S; ++x) {
-                float dx = x + 0.5f - c0, dy = y + 0.5f - c0, d = __builtin_sqrtf(dx * dx + dy * dy);
-                int a = cov(PIECE_R - d);
-                if (!a) continue;
-                /* lit from the top left */
-                float lx = dx + 5, ly = dy + 6, l = __builtin_sqrtf(lx * lx + ly * ly) / (PIECE_R * 1.5f);
-                uint32_t c = mix(piece_light[who], piece_base[who], clampi((int)(l * 256), 0, 256));
-                if (d > PIECE_R - 3) c = mix(c, piece_dark[who], (int)((d - (PIECE_R - 3)) / 3 * 200));
-                /* the raised inner ring of a real disc */
-                float rr = d - 11;
-                if (rr > -1.2f && rr < 0) c = mix(c, piece_dark[who], 90);
-                else if (rr >= 0 && rr < 1.2f) c = mix(c, piece_light[who], 70);
-                im.px[y * S + x] = (uint32_t)(a > 255 ? 255 : a) << 24 | c;
-            }
-        piece_img[who] = im;
-    }
+    for (int who = P1; who <= P2; ++who) piece_img[who] = disc_img(who, PIECE_R), marker_img[who] = disc_img(who, 12.5f);
 }
 
 static void piece(int who, float cx, float cy, int alpha) {
@@ -204,11 +216,6 @@ static void drop(int col) {
 static void game_over(int winner) {
     g.winner = winner;
     g.score[winner]++;
-    if (g.mode == VS_AI) {
-        int r = winner == P1 ? 0 : winner == P2 ? 1 : 2;
-        save.rec[g.level][r]++;
-        save_write();
-    }
     g.state = S_OVER;
     g.over_t0 = now_us();
     logf_("game over: %s after %d moves", winner == 3 ? "draw" : winner == P1 ? "P1 wins" : "P2 wins", g.b.moves);
@@ -244,17 +251,18 @@ static void take_back(void) {
 /* ---------------------------------------------------------------------------------------------
  * Menus */
 
-enum { T_AI, T_FRIEND, T_LEVEL, T_N };
+enum { T_AI, T_FRIEND, T_LEVEL, T_QUIT, T_N };
 enum { P_RESUME, P_UNDO, P_RESTART, P_MENU, P_N };
 #define MENU_W 230
 #define ITEM_H 36
 
-static int title_item_y(int i) { return 150 + i * (ITEM_H + 8); }
+static int title_item_y(int i) { return 128 + i * (ITEM_H + 4); }
 static int pause_item_y(int i) { return 92 + i * (ITEM_H + 6); }
 
 static void title_pick(int i) {
     if (i == T_AI) start_sitting(VS_AI);
     else if (i == T_FRIEND) start_sitting(FRIEND);
+    else if (i == T_QUIT) g.quit = 1;
     else save.level = (save.level + 1) % LEVELS, save_write();
     g.dirty = 1;
 }
@@ -278,32 +286,32 @@ static const char *name_of(int who) {
     return who == P1 ? "P1" : "P2";
 }
 
-static void draw_menu_item(int y, const char *label, int selected, int enabled) {
-    int x = (VIEW_W - MENU_W) / 2;
-    if (selected) rrect(x, y, MENU_W, ITEM_H, ITEM_H / 2, C_ACCENT, 256);
-    else rrect(x, y, MENU_W, ITEM_H, ITEM_H / 2, 0xffffff, 22);
-    text_c(&font_m, label, VIEW_W / 2, y + (ITEM_H - font_m.h) / 2 + 1, enabled ? C_TEXT : C_DIM, enabled ? 256 : 160);
+/* a column of items, each with a disc beside it: yellow, red for the one picked out */
+static void draw_menu(const char *const *items, int n, int (*item_y)(int), int sel, int disabled) {
+    int w = 0;
+    for (int i = 0; i < n; ++i) w = text_w(&font_menu, items[i]) > w ? text_w(&font_menu, items[i]) : w;
+    int x0 = (VIEW_W - (w + 36)) / 2;
+    for (int i = 0; i < n; ++i) {
+        int y = item_y(i), on = i == sel, off = i == disabled;
+        const Img *m = &marker_img[on ? P1 : P2];
+        img(m, x0, y + (ITEM_H - m->h) / 2, off ? 110 : 256);
+        uint32_t c = on ? C_TEXT : C_ITEM;
+        text(&font_menu, items[i], x0 + 36, y + (ITEM_H - font_menu.h) / 2 + 2, c, off ? 110 : 256);
+    }
 }
 
 static void draw_title(void) {
-    memcpy(fb, bg, sizeof fb);
-    text_c(&font_l, "Connect Four", VIEW_W / 2, 30, C_TEXT, 256);
-    for (int i = 0; i < 4; ++i) piece(i % 2 ? P2 : P1, VIEW_W / 2 - 57 + 38 * i, 112, 256);
+    fill(C_BG);
+    img(&logo, (VIEW_W - logo.w) / 2, 26, 256);
     char lv[48];
-    snprintf(lv, sizeof lv, "AI Level:  %s", level_name[save.level]);
-    const char *items[T_N] = { "Play vs AI", "Play with a Friend", lv };
-    for (int i = 0; i < T_N; ++i) draw_menu_item(title_item_y(i), items[i], g.sel == i, 1);
-    int *r = save.rec[save.level];
-    if (r[0] + r[1] + r[2]) {
-        char rec[80];
-        snprintf(rec, sizeof rec, "vs %s AI:  %d won   %d lost   %d drawn", level_name[save.level], r[0], r[1], r[2]);
-        text_c(&font_s, rec, VIEW_W / 2, title_item_y(T_N) + 2, C_DIM, 256);
-    }
+    snprintf(lv, sizeof lv, "AI Level: %s", level_name[save.level]);
+    const char *items[T_N] = { "Play vs. AI", "Play with a Friend", lv, "Quit" };
+    draw_menu(items, T_N, title_item_y, g.sel, -1);
 }
 
 static void draw_side(int who, int cx) {
     int active = g.state != S_OVER && g.turn == who;
-    if (active) disc((float)cx, 128, 21, C_TEXT, 60), ring((float)cx, 128, 21, 2, C_TEXT, 230);
+    if (active) disc((float)cx, 128, 20, C_TEXT, 60), ring((float)cx, 128, 20, 2, C_TEXT, 230);
     piece(who, (float)cx, 128, 256);
     text_c(&font_s, name_of(who), cx, 154, active ? C_TEXT : C_DIM, 256);
     char n[12];
@@ -312,7 +320,7 @@ static void draw_side(int who, int cx) {
 }
 
 static void draw_play(void) {
-    memcpy(fb, bg, sizeof fb);
+    fill(C_BG);
     uint64_t t = now_us();
     /* the discs in the board (the falling one where it is) */
     for (int r = 0; r < ROWS; ++r)
@@ -333,39 +341,41 @@ static void draw_play(void) {
         for (int k = 0; k < 4; ++k) ring((float)col_x(g.line[k][1]), (float)row_y(g.line[k][0]), PIECE_R - 1, 3.5f, 0xffffff, a);
     }
 
-    draw_side(P1, 25);
-    draw_side(P2, VIEW_W - 25);
+    /* each side's panel centred between the border (7 px) and the board */
+    draw_side(P1, (7 + BX) / 2);
+    draw_side(P2, (BX + BW + VIEW_W - 7) / 2);
 
     if (g.state == S_OVER) {
         char msg[40];
         if (g.winner == 3) snprintf(msg, sizeof msg, "It's a draw");
         else if (g.mode == VS_AI) snprintf(msg, sizeof msg, g.winner == P1 ? "You win!" : "The AI wins");
         else snprintf(msg, sizeof msg, "%s wins!", g.winner == P1 ? "Red" : "Yellow");
-        text_c(&font_l, msg, VIEW_W / 2, 2, g.winner == 3 ? C_TEXT : piece_light[g.winner], 256);
-        text_c(&font_s, "Centre: play again     Return: menu", VIEW_W / 2, 48, C_DIM, 256);
+        text_c(&font_l, msg, VIEW_W / 2, 8, g.winner == 3 ? C_TEXT : piece_light[g.winner], 256);
+        text_c(&font_s, "Centre: play again     Return: menu", VIEW_W / 2, 52, C_DIM, 256);
         return;
     }
     /* whose turn, and the disc waiting to drop */
     char msg[40];
     if (g.mode == VS_AI) snprintf(msg, sizeof msg, g.turn == P1 ? "Your turn" : "AI is thinking...");
     else snprintf(msg, sizeof msg, "%s's turn", g.turn == P1 ? "Red" : "Yellow");
-    text_c(&font_s, msg, VIEW_W / 2, 6, g.mode == VS_AI && g.turn == P1 ? C_TEXT : piece_light[g.turn], 256);
+    text_c(&font_s, msg, VIEW_W / 2, 12, g.mode == VS_AI && g.turn == P1 ? C_TEXT : piece_light[g.turn], 256);
     if (!g.fall.on) piece(g.turn, g.hover_x, HOVER_Y, 256);
 }
 
 static void draw_pause(void) {
     draw_play();
     darken(170);
-    rrect((VIEW_W - MENU_W - 30) / 2, 40, MENU_W + 30, 240, 22, 0x17223f, 245);
-    text_c(&font_m, "Paused", VIEW_W / 2, 56, C_TEXT, 256);
-    const char *items[P_N] = { "Resume", "Take Back", "New Game", "Main Menu" };
-    for (int i = 0; i < P_N; ++i) draw_menu_item(pause_item_y(i), items[i], g.sel == i, i != P_UNDO || can_take_back());
+    rrect((VIEW_W - MENU_W - 30) / 2, 40, MENU_W + 30, 240, 22, 0x0c1634, 245);
+    text_c(&font_m, "Paused", VIEW_W / 2, 54, C_TEXT, 256);
+    const char *items[P_N] = { "Resume", "Take Back", "Restart", "Main Menu" };
+    draw_menu(items, P_N, pause_item_y, g.sel, can_take_back() ? -1 : P_UNDO);
 }
 
 static void draw(void) {
     if (g.state == S_TITLE) draw_title();
     else if (g.state == S_PAUSE) draw_pause();
     else draw_play();
+    img(&border_img, 0, 0, 256);
     present(fb);
 }
 
@@ -497,7 +507,7 @@ int game_main(void) {
     int tests = getenv("C4_STATE") != 0;
     uint64_t last = now_us();
     static uint8_t held[256]; /* Q2 Pod repeats a held key as more downs: act on the first */
-    while (!quit_asked()) {
+    while (!quit_asked() && !g.quit) {
         int kind, a, b, c;
         while (next_event(&kind, &a, &b, &c)) {
             if (kind == 'k') {

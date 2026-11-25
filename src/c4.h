@@ -65,7 +65,8 @@ typedef struct {
     int atlas_w;
     short x[96], w[96], left[96], adv[96]; /* per glyph, from ' ' */
 } Font;
-extern const Font font_s, font_m, font_l; /* baked from Poppins by tools/font.py */
+extern const Font font_s, font_m, font_menu, font_l; /* baked in ITC Avant Garde Bold by tools/font.py */
+extern const Img logo; /* the title, baked by tools/logo.py */
 
 static inline int clampi(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 void fill(uint32_t c);

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 mkdir -p test/out
 ./test/hostbuild.sh
 ./build/host/logic_test
-for sc in menus friend ai pause; do
+for sc in menus friend ai pause quit; do
     python3 -I test/drive.py build/host test/out $sc > test/out/$sc.log 2>&1 || { cat test/out/$sc.log; exit 1; }
     grep -q "^exit status: 0" test/out/$sc.log || { echo "FAIL: $sc: exit status"; cat test/out/$sc.log; exit 1; }
     grep -q "^panel: yoffset 0 " test/out/$sc.log || { echo "FAIL: $sc: panel not handed back"; exit 1; }
@@ -31,6 +31,7 @@ fail() { echo "FAIL: $*"; exit 1; }
 [ "$(res pause after_undo_state)" = 1 ] && [ "$(res pause after_undo_moves)" = 0 ] && [ "$(res pause after_undo_turn)" = 1 ] ||
     fail "pause: Take Back didn't take back your move and the AI's"
 [ "$(res pause menu)" = 0 ] || fail "pause: Main Menu"
+[ "$(res quit exited_alone)" = 1 ] || fail "quit: Quit didn't end the game"
 grep -h "AI (" test/out/*.log | head -3
 for f in test/out/*.raw; do python3 -I test/view.py "$f" "${f%.raw}.png"; done
-echo "all ok: menus, two players by wheel and touch, a game against the AI, pause, Take Back"
+echo "all ok: menus, two players by wheel and touch, a game against the AI, pause, Take Back, Quit"

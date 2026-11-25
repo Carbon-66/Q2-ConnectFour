@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Bakes the game's three type sizes from Poppins (SIL Open Font License 1.1) into C: grey-level
-glyphs for ' ' to '~', one atlas row a size. Usage: font.py OUT.c
-POPPINS_DIR: the folder with Poppins-Medium.ttf and Poppins-Bold.ttf (default: the system's)."""
+"""Bakes the game's four type sizes, all in ITC Avant Garde Gothic Bold, into C: grey-level glyphs
+for ' ' to '~', one atlas row a size. Usage: font.py OUT.c
+FONT_BOLD: the font file. The default is TeX Gyre Adventor Bold (GUST Font License), the free
+clone of ITC Avant Garde Gothic; point FONT_BOLD at a licensed ITC Avant Garde Bold to use that."""
 import os, sys
 from PIL import Image, ImageDraw, ImageFont
 
-DIR = os.environ.get('POPPINS_DIR', '/usr/share/fonts/truetype/google-fonts')
-SIZES = [('font_s', 'Poppins-Medium.ttf', 14), ('font_m', 'Poppins-Bold.ttf', 19), ('font_l', 'Poppins-Bold.ttf', 34)]
+BOLD = os.environ.get('FONT_BOLD', '/usr/share/texmf/fonts/opentype/public/tex-gyre/texgyreadventor-bold.otf')
+SIZES = [('font_s', 14), ('font_m', 20), ('font_menu', 24), ('font_l', 34)]
 
-out = ['/* made by tools/font.py from Poppins (SIL Open Font License 1.1): do not edit */',
+out = [f'/* made by tools/font.py from {os.path.basename(BOLD)}: do not edit */',
        '#include "c4.h"']
-for name, file, size in SIZES:
-    f = ImageFont.truetype(os.path.join(DIR, file), size)
+for name, size in SIZES:
+    f = ImageFont.truetype(BOLD, size)
     asc, desc = f.getmetrics()
     h = asc + desc
     glyphs = []
