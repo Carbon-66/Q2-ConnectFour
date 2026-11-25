@@ -25,7 +25,7 @@ the card folder.
 ## Building
 
 ```sh
-./build.sh       # build/q2-connect4 and dist/.connect4 (copy .connect4 to the card's root)
+./build.sh       # build/q2-connectfour and dist/.connectfour (copy .connectfour to the card's root)
 test/run.sh      # host tests: the rules and AI, then the real main() on a fake Q2 panel
 ```
 
@@ -38,8 +38,8 @@ little-endian, o32, FR=1, NaN2008, glibc 2.28, interpreter `/lib/ld-linux-mipsn8
 `sysroot/stubs/gen.py` makes a stub `libc.so.6` to link against; a new libc call goes there too.
 
 The card folder holds `q2app` (`name=Connect Four`, `game=1`, no `audio=1`, so Q2 Pod leaves the
-music playing), the icons from `tools/icon.py`, and the binary. The game writes `connect4.sav`
-(AI level and the last mode played) and `connect4.log` beside itself.
+music playing), the icons from `tools/icon.py`, and the binary. The game writes `connectfour.sav`
+(AI level and the last mode played) and `connectfour.log` beside itself.
 
 ## Licences
 

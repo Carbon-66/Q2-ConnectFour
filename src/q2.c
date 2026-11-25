@@ -1,14 +1,14 @@
 /* Connect Four's platform layer: the Shanling Q2 under Q2 Pod, as a card game (as Challenger Deep's).
  *
  * Q2 Pod (github.com/DiamondBond/q2-pod, docs/internals.md "Card games") forks this binary from
- * Library -> Games when /mnt/mmc/.connect4/q2app holds game=1. While it runs, demo stops painting
+ * Library -> Games when /mnt/mmc/.connectfour/q2app holds game=1. While it runs, demo stops painting
  * and the game owns the screen and input:
  *
  *   screen  /dev/fb0: the portrait panel, 320 x 375, 32 bpp, red at bit 16, two pages (320 x 750
  *           virtual). The UI's view is landscape, 375 x 320, the panel turned anticlockwise, so a
  *           view pixel (X, Y) is the panel's row X, column 319 - Y. Frames go to the hidden page,
  *           then FBIOPAN_DISPLAY, as q2video, demo and the other card games do.
- *   input   text datagrams on /tmp/q2-connect4.input.sock: "k d CODE" / "k u CODE", "t d|m|u X Y" (in
+ *   input   text datagrams on /tmp/q2-connectfour.input.sock: "k d CODE" / "k u CODE", "t d|m|u X Y" (in
  *           the view's 375 x 320 px) and "w N" (the wheel's raw travel, 200 a turn, rising
  *           anticlockwise). Return held 700 ms is Q2 Pod's: it TERMs the game.
  *   sound   none: no audio=1, so the music plays on and Play/Pause and the side buttons stay the
@@ -31,9 +31,9 @@
 #include "c4.h"
 
 #define VERSION "1.0"
-#define APP_DIR "/mnt/mmc/.connect4"
-#define INPUT_SOCK "/tmp/q2-connect4.input.sock"
-#define LOG_FILE "connect4.log"
+#define APP_DIR "/mnt/mmc/.connectfour"
+#define INPUT_SOCK "/tmp/q2-connectfour.input.sock"
+#define LOG_FILE "connectfour.log"
 #define FB_W 320 /* the portrait panel */
 #define FB_H 375
 
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
     chdir(dir);
     if (freopen(LOG_FILE, "w", stdout)) setvbuf(stdout, 0, _IONBF, 0);
     if (freopen(LOG_FILE, "a", stderr)) setvbuf(stderr, 0, _IONBF, 0);
-    printf("connect4 %s: started in %s\n", VERSION, dir);
+    printf("connectfour %s: started in %s\n", VERSION, dir);
 
     if (!fb_open()) {
         fprintf(stderr, "No Q2 framebuffer: fd %d, %u x %u, virtual %u, %u bpp, red at %u, line %u, "

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Runs the host build of q2-connect4 as Q2 Pod would (fake /dev/fb0 from fbshim.so, input as text
-datagrams on /tmp/q2-connect4.input.sock, TERM to end it) through one scenario, and prints what it
+"""Runs the host build of q2-connectfour as Q2 Pod would (fake /dev/fb0 from fbshim.so, input as text
+datagrams on /tmp/q2-connectfour.input.sock, TERM to end it) through one scenario, and prints what it
 logged and its last state. Frames are saved as OUT_DIR/<scenario>-<name>.raw (view.py shows them).
 
 Usage: drive.py BUILD_DIR OUT_DIR SCENARIO
@@ -9,20 +9,20 @@ import os, shutil, signal, socket, subprocess, sys, tempfile, time
 
 build, outdir, scenario = sys.argv[1:4]
 build, outdir = os.path.abspath(build), os.path.abspath(outdir)
-SOCK = '/tmp/q2-connect4.input.sock'
+SOCK = '/tmp/q2-connectfour.input.sock'
 card = tempfile.mkdtemp()
-app = os.path.join(card, '.connect4')
+app = os.path.join(card, '.connectfour')
 os.mkdir(app)
-shutil.copy(os.path.join(build, 'q2-connect4'), app)
+shutil.copy(os.path.join(build, 'q2-connectfour'), app)
 dump = os.path.join(card, 'fb.raw')
 env = dict(os.environ, LD_PRELOAD=os.path.join(build, 'fbshim.so'), FB_DUMP=dump,
            FB_FINAL=os.path.join(card, 'fb.final'), C4_STATE='1', C4_SEED='7')
 if scenario == 'ai':
-    open(os.path.join(app, 'connect4.sav'), 'w').write('level 0\n')  # Easy: a game the test can win
+    open(os.path.join(app, 'connectfour.sav'), 'w').write('level 0\n')  # Easy: a game the test can win
 if os.path.exists(SOCK):
     os.unlink(SOCK)
-proc = subprocess.Popen([os.path.join(app, 'q2-connect4')], env=env, cwd=app)
-log = os.path.join(app, 'connect4.log')
+proc = subprocess.Popen([os.path.join(app, 'q2-connectfour')], env=env, cwd=app)
+log = os.path.join(app, 'connectfour.log')
 
 def wait_for(cond, secs, what):
     end = time.time() + secs

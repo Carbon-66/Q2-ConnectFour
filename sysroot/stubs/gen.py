@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stub shared libraries to link q2-connect4 against: each has the real library's soname and the
+"""Stub shared libraries to link q2-connectfour against: each has the real library's soname and the
 symbols the game imports, so lld writes the right NEEDED entries and dynamic relocations. On the
 Q2, the rootfs's own glibc 2.28 resolves them. Usage: gen.py OUTDIR
 

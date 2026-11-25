@@ -75,10 +75,10 @@ static int cov(float d);
 static int human(int who) { return g.mode == FRIEND || who == P1; }
 
 /* ---------------------------------------------------------------------------------------------
- * The save file: connect4.sav */
+ * The save file: connectfour.sav */
 
 static void save_load(void) {
-    FILE *f = fopen("connect4.sav", "r");
+    FILE *f = fopen("connectfour.sav", "r");
     if (!f) return;
     char line[128];
     int a;
@@ -90,11 +90,11 @@ static void save_load(void) {
 }
 
 static void save_write(void) {
-    FILE *f = fopen("connect4.tmp", "w");
+    FILE *f = fopen("connectfour.tmp", "w");
     if (!f) return;
     fprintf(f, "level %d\nmode %d\n", save.level, save.mode);
     fclose(f);
-    rename("connect4.tmp", "connect4.sav");
+    rename("connectfour.tmp", "connectfour.sav");
 }
 
 /* ---------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Host tests for q2-connect4 (x86-64 Linux, clang, python3 with Pillow): the rules and the AI, then
+# Host tests for q2-connectfour (x86-64 Linux, clang, python3 with Pillow): the rules and the AI, then
 # the real game and platform layer on fbshim.so's fake /dev/fb0, driven through Q2 Pod's input
 # socket (test/drive.py). Each scenario must end on TERM with status 0, the panel back on Q2 Pod's
 # page and the socket gone. Frames land in test/out/*.raw and .png.

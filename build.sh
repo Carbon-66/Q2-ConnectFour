@@ -1,9 +1,9 @@
 #!/bin/sh
-# Builds q2-connect4 for the Shanling Q2 (Ingenic X2000, MIPS32r2 little-endian, glibc 2.28, o32 with
+# Builds q2-connectfour for the Shanling Q2 (Ingenic X2000, MIPS32r2 little-endian, glibc 2.28, o32 with
 # FR=1 and NaN2008, as Q2 Pod's own q2video and the other card games are built) and lays out the
 # card folder.
 #
-#   ./build.sh            -> build/q2-connect4 and dist/.connect4/ (copy .connect4 to the card's root)
+#   ./build.sh            -> build/q2-connectfour and dist/.connectfour/ (copy .connectfour to the card's root)
 #
 # Needs clang, ld.lld and python3 with Pillow, no MIPS sysroot: sysroot/include declares what the game uses,
 # and the stub libraries made by sysroot/stubs/gen.py carry the real sonames and symbol versions,
@@ -39,11 +39,11 @@ ld.lld -m elf32ltsmip -e __start --dynamic-linker /lib/ld-linux-mipsn8.so.1 \
     --image-base=0x400000 -z noexecstack --gc-sections --hash-style=sysv --build-id=none -s \
     --export-dynamic-symbol=_IO_stdin_used \
     --as-needed build/obj/*.o build/stubs/libc.so.6 \
-    -o build/q2-connect4
+    -o build/q2-connectfour
 
 rm -rf dist
-mkdir -p dist/.connect4
-cp build/q2-connect4 dist/.connect4/q2-connect4
-cp card/q2app card/icon.png card/icon-40.png dist/.connect4/
-cp card/README.txt dist/.connect4/README.txt
-echo "built: build/q2-connect4 ($(wc -c < build/q2-connect4) bytes), card folder: dist/.connect4"
+mkdir -p dist/.connectfour
+cp build/q2-connectfour dist/.connectfour/q2-connectfour
+cp card/q2app card/icon.png card/icon-40.png dist/.connectfour/
+cp card/README.txt dist/.connectfour/README.txt
+echo "built: build/q2-connectfour ($(wc -c < build/q2-connectfour) bytes), card folder: dist/.connectfour"

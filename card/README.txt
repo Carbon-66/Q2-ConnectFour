@@ -5,7 +5,7 @@ Drop discs into the board in turns. The first to line up four of their own colou
 and down or on a slant, wins. If the board fills first, it's a draw.
 
 INSTALL
-1. Copy the .connect4 folder to the root of the card. On a Mac, press Cmd-Shift-. in Finder to
+1. Copy the .connectfour folder to the root of the card. On a Mac, press Cmd-Shift-. in Finder to
    see dot-folders.
 2. Eject the card and open Library -> Games -> Connect Four.
 
@@ -28,9 +28,9 @@ CONTROLS
 The music keeps playing: Play/Pause and the side buttons stay the player's.
 
 FILES
-  q2-connect4    the game
-  connect4.sav   your AI level and the last way you played
-  connect4.log   what the game did, for when something goes wrong
+  q2-connectfour    the game
+  connectfour.sav   your AI level and the last way you played
+  connectfour.log   what the game did, for when something goes wrong
 
 Code: MIT licence. Font: TeX Gyre Adventor (GUST Font License), a clone of ITC Avant Garde. "Connect Four" is a trademark of
 Hasbro; this is an unofficial fan game, not affiliated with or endorsed by Hasbro.
